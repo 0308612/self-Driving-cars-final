@@ -52,7 +52,7 @@ while True:
     image = cv2.blur(image, (5,5))
 
     #Canny
-    image = cv2.Canny(image, 200,400)
+    image = cv2.Canny(image, 350,400)
 
     #Countours (needs canny)
     contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -64,6 +64,7 @@ while True:
     image1 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     lines = cv2.HoughLines(image1, 1, math.pi/180.0,100, np.array([]), 0, 0)
+    image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
     if lines is not None:
         a,b,c = lines.shape
         for i in range(a):
@@ -75,7 +76,7 @@ while True:
             y0 = b*rho
             pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
             pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-            cv2.line(image1, pt1, pt2, (255,255,255), 2, cv2.LINE_AA)
+            image3 = cv2.line(image2, pt1, pt2, (0,0,255), 2, cv2.LINE_AA)
 
     # lines = cv2.HoughLines(image2, 1, np.pi/180, 200)
     # print (lines)
@@ -131,7 +132,7 @@ while True:
     #         cv2.putText(image,class_name ,(int(box_x), int(box_y+.0001*image_height)),cv2.FONT_HERSHEY_SIMPLEX,(.004*image_width),(0, 0, 255), thickness=2)
 
 
-    cv2.imshow('image', image1)
+    cv2.imshow('image', image3)
 #cv2.imwrite("image_box_text.jpg",image)
 
     key = cv2.waitKey(1)
