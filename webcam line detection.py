@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import os, sys, inspect #For dynamic filepaths
-import math
+import random
 
 
 # Pretrained classes in the model - Dictionary
@@ -38,6 +38,7 @@ model = cv2.dnn.readNetFromTensorflow(execution_path('models/frozen_inference_gr
                                       execution_path('models/ssd_mobilenet_v2_coco_2018_03_29.pbtxt'))
 cam = cv2.VideoCapture(0)
 
+
 while True:
 
     check, frame = cam.read()
@@ -56,27 +57,48 @@ while True:
 
     #Countours (needs canny)
     contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    print("Number of Contours Found = " + str(len(contours)))
+    #print("Number of Contours Found = " + str(len(contours)))
     img = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(img, contours, -1, (255,255,255),2)
 
     # image1 = cv2.imread("image.jpg", cv2.IMREAD_GRAYSCALE)
     image1 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    lines = cv2.HoughLines(image1, 1, math.pi/180.0,100, np.array([]), 0, 0)
+    lines = cv2.HoughLinesP(image1, 1, np.pi/180.0, 100, minLineLength=100, maxLineGap=10)
     image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
+    parallel_lines = {}
     if lines is not None:
-        a,b,c = lines.shape
-        for i in range(a):
-            rho = lines[i][0][0]
-            theta = lines[i][0][1]
-            a = math.cos(theta)
-            b = math.sin(theta)
-            x0 = a*rho
-            y0 = b*rho
-            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-            image3 = cv2.line(image2, pt1, pt2, (0,0,255), 2, cv2.LINE_AA)
+        for line in lines:
+            x1,y1,x2,y2 = line[0]
+            slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
+            key = round(slope, 2)
+            if key not in parallel_lines:
+                parallel_lines[key] = []
+            parallel_lines[key].append((x1, y1, x2, y2))
+        for slope, line_group in parallel_lines.items():
+            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+            for x1, y1, x2, y2 in line_group:
+                image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
+                cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+        cv2.imshow('image', image3)
+    else:
+        cv2.imshow('image', image2)
+
+    # lines = cv2.HoughLines(image1, 1, math.pi/180.0,100, np.array([]), 0, 0)
+    # image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
+    # if lines is not None:
+    #     a,b,c = lines.shape
+    #     for i in range(a):
+    #         rho = lines[i][0][0]
+    #         theta = lines[i][0][1]
+    #         a = math.cos(theta)
+    #         b = math.sin(theta)
+    #         x0 = a*rho
+    #         y0 = b*rho
+    #         pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+    #         pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+    #         image3 = cv2.line(image2, pt1, pt2, (0,0,255), 2, cv2.LINE_AA)
 
     # lines = cv2.HoughLines(image2, 1, np.pi/180, 200)
     # print (lines)
@@ -132,7 +154,6 @@ while True:
     #         cv2.putText(image,class_name ,(int(box_x), int(box_y+.0001*image_height)),cv2.FONT_HERSHEY_SIMPLEX,(.004*image_width),(0, 0, 255), thickness=2)
 
 
-    cv2.imshow('image', image3)
 #cv2.imwrite("image_box_text.jpg",image)
 
     key = cv2.waitKey(1)
