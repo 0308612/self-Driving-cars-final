@@ -71,7 +71,7 @@ while True:
         for line in lines:
             x1,y1,x2,y2 = line[0]
             slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
-            key = round(slope, 2)
+            key = round(slope, 0)
             if key not in parallel_lines:
                 parallel_lines[key] = []
             parallel_lines[key].append((x1, y1, x2, y2))
