@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import os, sys, inspect #For dynamic filepaths
 import random
+import itertools
+import math
 
 
 # Pretrained classes in the model - Dictionary
@@ -31,19 +33,22 @@ def id_class_name(class_id, classes):
 
 #Find the execution path and join it with the direct reference
 def execution_path(filename):
-  return os.path.join(os.path.dirname(inspect.getfile(sys._getframe(1))), filename)			
+  return os.path.join(os.path.dirname(inspect.getfile(sys._getframe(1))), filename)
 
 #Loading model
 model = cv2.dnn.readNetFromTensorflow(execution_path('models/frozen_inference_graph.pb'),
                                       execution_path('models/ssd_mobilenet_v2_coco_2018_03_29.pbtxt'))
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture(0, cv2.CAP_V4L2)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cam.set(cv2.CAP_PROP_FPS, 30)
 
 
 while True:
 
     check, frame = cam.read()
-    image = cv2.resize(frame, (320,280))
-    
+    image = cv2.resize(frame, (640,480))
+
     #Greyscale
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -71,7 +76,7 @@ while True:
         for line in lines:
             x1,y1,x2,y2 = line[0]
             slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
-            key = round(slope, 0)
+            key = round(slope, 2)
             if key not in parallel_lines:
                 parallel_lines[key] = []
             parallel_lines[key].append((x1, y1, x2, y2))
@@ -81,7 +86,21 @@ while True:
             for x1, y1, x2, y2 in line_group:
                 image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
                 cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-        cv2.imshow('image', image3)
+        
+        most_parallel_pair = None
+        min_diff = float('inf')
+        diff = abs(np.arctan(slope) - np.arctan(slope))  # This will be zero for lines with the same slope
+        for l1, l2 in itertools.combinations(lines, 2):
+            diff = np.minimum(diff, np.pi - diff)
+            if diff < min_diff:
+                min_diff = diff
+                most_parallel_pair = (l1, l2)
+                image4 = cv2.line(image2, (l1[0][0], l1[0][1]), (l1[0][2], l1[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
+                image4 = cv2.line(image2, (l2[0][0], l2[0][1]), (l2[0][2], l2[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
+
+        
+
+        cv2.imshow('image', image4)
     else:
         cv2.imshow('image', image2)
 
@@ -142,14 +161,14 @@ while True:
     #         class_id = detection[1] #This is the ID of what it thinks it is
     #         class_name=id_class_name(class_id,classNames) #Returning the name from Dictionary
     #         print(str(str(class_id) + " " + str(detection[2])  + " " + class_name))
-            
+
     #         #Draw the bounding box, scaled to size of the image
     #         box_x = detection[3] * image_width
     #         box_y = detection[4] * image_height
     #         box_width = detection[5] * image_width
     #         box_height = detection[6] * image_height
     #         cv2.rectangle(image, (int(box_x), int(box_y)), (int(box_width), int(box_height)), (23, 230, 210), thickness=2)
-            
+
     #         #Put some text on the bounding box
     #         cv2.putText(image,class_name ,(int(box_x), int(box_y+.0001*image_height)),cv2.FONT_HERSHEY_SIMPLEX,(.004*image_width),(0, 0, 255), thickness=2)
 
