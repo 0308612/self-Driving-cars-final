@@ -3,7 +3,6 @@ import numpy as np
 import os, sys, inspect #For dynamic filepaths
 import random
 import itertools
-import math
 
 
 # Pretrained classes in the model - Dictionary
@@ -73,76 +72,41 @@ while True:
     image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
     parallel_lines = {}
     if lines is not None:
+        image4 = None
         for line in lines:
             x1,y1,x2,y2 = line[0]
             slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
-            key = round(slope, 2)
-            if key not in parallel_lines:
-                parallel_lines[key] = []
-            parallel_lines[key].append((x1, y1, x2, y2))
-        for slope, line_group in parallel_lines.items():
-            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        #     key = round(slope, 2)
+        #     if key not in parallel_lines:
+        #         parallel_lines[key] = []
+        #     parallel_lines[key].append((x1, y1, x2, y2))
+        # for slope, line_group in parallel_lines.items():
+        #     color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-            for x1, y1, x2, y2 in line_group:
-                image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
-                cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            # for x1, y1, x2, y2 in line_group:
+            #     image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
+            #     cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
         
         most_parallel_pair = None
+        exact_parallel_cutoff = 1e-1000 
         min_diff = float('inf')
         diff = abs(np.arctan(slope) - np.arctan(slope))  # This will be zero for lines with the same slope
         for l1, l2 in itertools.combinations(lines, 2):
             diff = np.minimum(diff, np.pi - diff)
-            if diff < min_diff:
+            if exact_parallel_cutoff < diff < min_diff:
                 min_diff = diff
                 most_parallel_pair = (l1, l2)
                 image4 = cv2.line(image2, (l1[0][0], l1[0][1]), (l1[0][2], l1[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
                 image4 = cv2.line(image2, (l2[0][0], l2[0][1]), (l2[0][2], l2[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
 
         
-
-        cv2.imshow('image', image4)
+        if image4 is not None:
+            cv2.imshow('image', image4)
+        else:
+            cv2.imshow('image', image2)
     else:
         cv2.imshow('image', image2)
 
-    # lines = cv2.HoughLines(image1, 1, math.pi/180.0,100, np.array([]), 0, 0)
-    # image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
-    # if lines is not None:
-    #     a,b,c = lines.shape
-    #     for i in range(a):
-    #         rho = lines[i][0][0]
-    #         theta = lines[i][0][1]
-    #         a = math.cos(theta)
-    #         b = math.sin(theta)
-    #         x0 = a*rho
-    #         y0 = b*rho
-    #         pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-    #         pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-    #         image3 = cv2.line(image2, pt1, pt2, (0,0,255), 2, cv2.LINE_AA)
-
-    # lines = cv2.HoughLines(image2, 1, np.pi/180, 200)
-    # print (lines)
-    # if lines is not None:
-    #     for r_theta in lines:
-    #         arr = np.array(r_theta[0], dtype=np.float64)
-    #         r,theta = arr
-    #         a = np.cos(theta)
-    #         b = np.sin(theta)
-    #         x0 = a*r
-    #         y0 = b*r
-    #         x1 = int(x0 + 1000*(-b))
-    #         y1 = int(y0 + 1000*(a))
-    #         x2 = int(x0 - 1000*(-b))
-    #         y2 = int(y0 - 1000*(a))
-    #         #image2 = cv2.cvtColor(image2, cv2.COLOR_GRAY2BGR)
-    #         image3 = cv2.line(image2, (x1,y1), (x2,y2), (0,0,255), 2, cv2.LINE_AA)
-    # for i in contours:
-    #     M = cv2.moments(i)
-    #     if M['m00'] != 0:
-    #         cx = int(M['m10']/M['m00'])
-    #         cy = int(M['m01']/M['m00'])
-    #         #cv2.drawContours(image, [i], -1, (0,255,0), 2)
-    #         cv2.circle(image, (cx,cy), 7, (0,255,0), -1)
-    #         cv2.putText(image, 'center', (cx-20,cy-20), cv2.FONT_HERSHEY_SIMPLEX, .5, (0,255,0), 1)
 
     image_height, image_width = image.shape
 
