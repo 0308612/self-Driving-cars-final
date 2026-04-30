@@ -3,6 +3,7 @@ import numpy as np
 import os, sys, inspect #For dynamic filepaths
 import random
 import itertools
+import warnings
 
 
 # Pretrained classes in the model - Dictionary
@@ -57,7 +58,7 @@ while True:
     image = cv2.blur(image, (5,5))
 
     #Canny
-    image = cv2.Canny(image, 350,400)
+    image = cv2.Canny(image, 350,400,3)
 
     #Countours (needs canny)
     contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -75,29 +76,66 @@ while True:
         image4 = None
         for line in lines:
             x1,y1,x2,y2 = line[0]
-            slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
-        #     key = round(slope, 2)
+        #    slope = (y2-y1)/(x2-x1) if (x2-x1) != 0 else float('inf')
+        #     key = round(slope, 1) # Group lines by slope rounded to 1 decimal place
         #     if key not in parallel_lines:
         #         parallel_lines[key] = []
         #     parallel_lines[key].append((x1, y1, x2, y2))
         # for slope, line_group in parallel_lines.items():
         #     color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-            # for x1, y1, x2, y2 in line_group:
-            #     image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
-            #     cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+        #     for x1, y1, x2, y2 in line_group:
+        #         image3 = cv2.line(image2, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
+        #         cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            midlines = []
+            midlines.append(((x1+x2)/2, (y1+y2)/2))
+        pts = np.array(midlines, dtype=np.float32)
+        if 'pts' in locals() and pts.size >= 2:
+            pts = pts[pts[:, 0].argsort()]  # Sort points by x-coordinate
+            x_data = pts[:, 0]
+            y_data = pts[:, 1]
+            
+            deg = 2 if pts.size > 5 else 1  # Use quadratic fit for more points, linear fit for fewer
+            z = np.polyfit(y_data, x_data, deg)  # Fit a quadratic polynomial
+            p = np.poly1d(z)
+
+            y_range = np.linspace(y_data.min(), y_data.max(), 50)
+            x_range = p(y_range)
+
+            curve_pts = np.stack([x_range, y_range], axis=-1).astype(np.int32)
+            curve_pts = curve_pts.reshape((-1, 1, 2))
+            cv2.polylines(image2, [curve_pts], isClosed=False, color=(0, 255, 0), thickness=2)
+        else:
+            print("Not enough points to fit a curve.")
+
+            # vx,vy,x,y = [v.item() for v in cv2.fitLine(pts, cv2.DIST_L2,0,0.01,0.01)]
+            # print(f"Line direction vector: ({vx}, {vy}), Point on line: ({x}, {y})")
+
+            # x_coords = pts[:, 0]
+            # y_coords = pts[:, 1]
+
+            # z = np.polyfit(x_coords, y_coords, 2)
+            # p = np.poly1d(z)
+
+            # plot_x = np.linspace(min(x_coords), max(x_coords), 100).astype(int)
+            # plot_y = p(plot_x).astype(int)
+
+            # curve_pts = np.column_stack((plot_x, plot_y))
+            # cv2.polylines(image2, [curve_pts], isClosed=False, color=(0, 255, 0), thickness=2)
+
+
         
-        most_parallel_pair = None
-        exact_parallel_cutoff = 1e-1000 
-        min_diff = float('inf')
-        diff = abs(np.arctan(slope) - np.arctan(slope))  # This will be zero for lines with the same slope
-        for l1, l2 in itertools.combinations(lines, 2):
-            diff = np.minimum(diff, np.pi - diff)
-            if exact_parallel_cutoff < diff < min_diff:
-                min_diff = diff
-                most_parallel_pair = (l1, l2)
-                image4 = cv2.line(image2, (l1[0][0], l1[0][1]), (l1[0][2], l1[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
-                image4 = cv2.line(image2, (l2[0][0], l2[0][1]), (l2[0][2], l2[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
+        # most_parallel_pair = None
+        # exact_parallel_cutoff = 1e-1000 
+        # min_diff = float('inf')
+        # diff = abs(np.arctan(slope) - np.arctan(slope))  # This will be zero for lines with the same slope
+        # for l1, l2 in itertools.combinations(lines, 2):
+        #     diff = np.minimum(diff, np.pi - diff)
+        #     if exact_parallel_cutoff < diff < min_diff:
+        #         min_diff = diff
+        #         most_parallel_pair = (l1, l2)
+        #         image4 = cv2.line(image2, (l1[0][0], l1[0][1]), (l1[0][2], l1[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
+        #         image4 = cv2.line(image2, (l2[0][0], l2[0][1]), (l2[0][2], l2[0][3]), (0, 255, 0), 3, cv2.LINE_AA)
 
         
         if image4 is not None:
