@@ -71,7 +71,8 @@ while True:
 
     lines = cv2.HoughLinesP(image1, 1, np.pi/180.0, 100, minLineLength=100, maxLineGap=10)
     image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
-    parallel_lines = {}
+    #parallel_lines = {}
+    warnings.filterwarnings("ignore", category=np.exceptions.RankWarning)  # Suppress RankWarning from polyfit
     if lines is not None:
         image4 = None
         for line in lines:
@@ -100,7 +101,7 @@ while True:
             p = np.poly1d(z)
 
             y_range = np.linspace(y_data.min(), y_data.max(), 50)
-            x_range = p(y_range)
+            x_range = p(y_range).astype(np.int32)
 
             curve_pts = np.stack([x_range, y_range], axis=-1).astype(np.int32)
             curve_pts = curve_pts.reshape((-1, 1, 2))
