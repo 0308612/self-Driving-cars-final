@@ -90,22 +90,27 @@ while True:
         #         cv2.putText(image3, f'Slope: {slope}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
             midlines = []
             midlines.append(((x1+x2)/2, (y1+y2)/2))
+            #print(str(midlines) + " midlines")
         pts = np.array(midlines, dtype=np.float32)
         if 'pts' in locals() and pts.size >= 2:
-            pts = pts[pts[:, 0].argsort()]  # Sort points by x-coordinate
-            x_data = pts[:, 0]
-            y_data = pts[:, 1]
+            pts = pts[pts[:, 1].argsort()]  # Sort points by x-coordinate
+            x_data = pts[:, 1] #problem
+            y_data = pts[:, 0]
+            print(str(x_data) + " x data, " + str(y_data) + " y data")
             
             deg = 2 if pts.size > 5 else 1  # Use quadratic fit for more points, linear fit for fewer
-            z = np.polyfit(y_data, x_data, deg)  # Fit a quadratic polynomial
+            z = np.polyfit(x_data, y_data, deg)  # Fit a quadratic polynomial
             p = np.poly1d(z)
 
-            y_range = np.linspace(y_data.min(), y_data.max(), 50)
-            x_range = p(y_range).astype(np.int32)
+            print (str(np.min(x_data)) + " min x data, " + str(np.max(x_data)) + " max x data")
+            x_range = np.linspace(x_data.min(), x_data.max())
+            #print(str(x_range) + " x range")
+            y_range = p(x_range).astype(np.int32)
 
-            curve_pts = np.stack([x_range, y_range], axis=-1).astype(np.int32)
+            curve_pts = np.stack([y_range, x_range], axis=-1).astype(np.int32)
             curve_pts = curve_pts.reshape((-1, 1, 2))
-            cv2.polylines(image2, [curve_pts], isClosed=False, color=(0, 255, 0), thickness=2)
+            #print(str(curve_pts) + " curve pts")
+            cv2.polylines(image2, [curve_pts], isClosed=False, color=(0, 255, 0), thickness=10)
         else:
             print("Not enough points to fit a curve.")
 
