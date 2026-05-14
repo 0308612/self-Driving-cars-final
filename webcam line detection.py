@@ -4,24 +4,26 @@ import warnings
 import serial
 import time
 
-if __name__ == '__main__':
-    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-    ser.reset_input_buffer()
-
-    while True:
-        #logic :(
-        if ser.in_waiting > 0:
-        #decode and read and print to RP console
-            line = ser.readline().decode('utf-8').rstrip()
-            print(line)
-
 cam = cv2.VideoCapture(0, cv2.CAP_V4L2)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cam.set(cv2.CAP_PROP_FPS, 30)
 
+if __name__ == '__main__':
+    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+    ser.reset_input_buffer()
+    x_range = []
+else:
+    ser = None
 
 while True:
+    if ser is not None:
+        for i in range(len(x_range)):
+            if x_range[i] != 0:
+                print(f"Sending x_range: {x_range[i]}")
+                ser.write(str.encode(str(x_range[i])))
+                i += 1
+
 
     check, frame = cam.read()
     image = cv2.resize(frame, (640,480))
@@ -53,7 +55,7 @@ while True:
 
     lines = cv2.HoughLinesP(image1, 1, np.pi/180.0, 100, minLineLength=100, maxLineGap=10)
     image2 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
-    
+
     warnings.filterwarnings("ignore", category=np.exceptions.RankWarning)  # Suppress RankWarning from polyfit
     if lines is not None:
         midlines = []
@@ -70,7 +72,7 @@ while True:
             x_data = pts[:, 0]
             y_data = pts[:, 1]
             #print(str(x_data) + " x data, " + str(y_data) + " y data")
-            
+        
             deg = 2 if pts.size > 5 else 1  # Use quadratic fit for more points, linear fit for fewer
             z = np.polyfit(x_data, y_data, deg)  # Fit a quadratic polynomial
             p = np.poly1d(z)
@@ -87,14 +89,13 @@ while True:
         else:
             print("Not enough points to fit a curve.")
 
-        
+    
         if image4 is not None:
             cv2.imshow('image', image4)
         else:
             cv2.imshow('image', image2)
     else:
         cv2.imshow('image', image2)
-
 
     image_height, image_width = image.shape
 
